@@ -1,16 +1,28 @@
 import { ID } from "./common";
 
+// export interface Reservation {
+//   id: ID;
+//   customerName: string;
+//   customerEmail: string;
+//   listingTitle: string;
+//   quantity: number;
+//   collectionTime: string;
+//   status: ReservationStatus;
+// }
+
 export type ReservationStatus =
   | "PENDING"
   | "CONFIRMED"
   | "COLLECTED"
-  | "CANCELLED"
-  | "EXPIRED";
+  | "CANCELLED";
 
 export interface Reservation {
   id: ID;
+  customerId: ID;
   listingId: ID;
-  consumerId: ID;
   quantity: number;
+  collectionTime: string;
   status: ReservationStatus;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -1,13 +1,29 @@
+
 export type ID = string;
 
-export type UserRole =
-  | "CONSUMER"
-  | "BUSINESS"
-  | "CHARITY"
-  | "ADMIN";
-
-  export interface Step {
+export interface Step {
   number: string;
   title: string;
   description: string;
 }
+
+export type UserRole =
+  | "CUSTOMER"
+  | "BUSINESS"
+  | "CHARITY"
+  | "ADMIN";
+
+export type RegistrationRole = Exclude<UserRole, "ADMIN">;
+
+export interface RegistrationForm {
+  role: RegistrationRole;
+  fullName: string;
+  organisationName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  address: string;
+  city: string;
+  country: string;
+}
+
