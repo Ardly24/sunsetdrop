@@ -35,24 +35,54 @@ export default function RegisterPage() {
     setSuccess(false);
   }
 
-  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
 
-    if (form.password !== form.confirmPassword) {
-      setError("Your passwords do not match.");
+async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  setError("");
+  setSuccess(false);
+
+  if (form.password !== form.confirmPassword) {
+    setError("Your passwords do not match.");
+    return;
+  }
+
+  if (form.password.length < 8) {
+    setError("Your password must contain at least 8 characters.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(form),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.message || "Registration failed.");
       return;
     }
-
-    if (form.password.length < 8) {
-      setError("Your password must contain at least 8 characters.");
-      return;
-    }
-
-    console.log("Registration details:", form);
 
     setSuccess(true);
-    setError("");
+
+    // Clear the form after successful registration
+    setForm({
+      ...form,
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    });
+  } catch {
+    setError("Unable to connect to the server. Please try again.");
   }
+}
+
 
   return (
     <div className="w-full max-w-xl">
