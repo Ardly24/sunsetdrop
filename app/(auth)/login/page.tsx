@@ -3,21 +3,63 @@
 
 import { useState, type SyntheticEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
-  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
+async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+  event.preventDefault();
 
-    // Authentication.
-    console.log("Login details:", { email, password });
+  setError("");
 
-    setError("Authentication required.");
+  if (!email.trim() || !password) {
+    setError("Please enter your email and password.");
+    return;
   }
+
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.message || "Login failed.");
+      return;
+    }
+
+    // Login successful
+    setEmail("");
+    setPassword("");
+    setShowPassword(false);
+    setError("");
+
+    if (data.user.role === "BUSINESS") {
+      router.push("/business/dashboard");
+    } else if (data.user.role === "CHARITY") {
+      router.push("/charity/dashboard");
+    } else {
+      router.push("/");
+    }
+
+  } catch {
+    setError("Unable to connect to the server. Please try again.");
+  }
+}
+
 
   return (
     <div className="w-full max-w-md">

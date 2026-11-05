@@ -1,5 +1,6 @@
 
 import Link from "next/link";
+import { verifyRole } from "@/lib/dal";
 
 const navigation = [
   {
@@ -19,11 +20,13 @@ const navigation = [
   },
 ];
 
-export default function BusinessLayout({
+export default async function BusinessLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+
+  const user = await verifyRole("BUSINESS");
   return (
     <div className="min-h-screen bg-[#F7F8F5] md:flex">
       {/* Sidebar */}
@@ -74,11 +77,11 @@ export default function BusinessLayout({
 
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-forest text-sm font-bold text-white">
-              B
+              {user.fullName.charAt(0).toUpperCase()}
             </div>
             <div className="hidden sm:block">
               <p className="text-sm font-semibold text-charcoal">
-                Business Account
+                {user.fullName}
               </p>
               <p className="text-xs text-muted">
                 Business owner
