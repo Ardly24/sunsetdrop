@@ -1,100 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FoodListing, ListingStatus } from "@/types";
-
-
-const initialListings: FoodListing[] = [
-  {
-    id: '1',
-    title: "Fresh bakery selection",
-    category: "Bakery",
-    originalPrice: 90,
-    discountedPrice: 45,
-    quantity: 5,
-    status: "ACTIVE",
-    type: "DISCOUNTED",
-    businessId: "1",
-    locationId: "1",
-    description: "A selection of freshly baked goods.",
-    collectionStart: "2024-06-01T10:00:00Z",
-    collectionEnd: "2024-06-01T12:00:00Z",
-    createdAt: "2024-05-30T08:00:00Z",
-    updatedAt: "2024-05-30T08:00:00Z",
-  },
-
-  {
-    id: '2',
-    title: "Vegetable lunch box",
-    category: "Prepared meals",
-    originalPrice: 70,
-    discountedPrice: 35,
-    quantity: 3,
-    status: "ACTIVE",
-    type: "DISCOUNTED",
-    businessId: "1",
-    locationId: "1",
-    description: "A healthy selection of vegetables.",
-    collectionStart: "2024-06-01T10:00:00Z",
-    collectionEnd: "2024-06-01T12:00:00Z",
-    createdAt: "2024-05-30T08:00:00Z",
-    updatedAt: "2024-05-30T08:00:00Z",
-  },
-  {
-    id: '3',
-    title: "Assorted fresh sandwiches",
-    category: "Bakery",
-    originalPrice: 50,
-    discountedPrice: 25,
-    quantity: 0,
-    status: "SOLD_OUT",
-    type: "DISCOUNTED",
-    businessId: "1",
-    locationId: "1",
-    description: "A variety of fresh sandwiches.",
-    collectionStart: "2024-06-01T10:00:00Z",
-    collectionEnd: "2024-06-01T12:00:00Z",
-    createdAt: "2024-05-30T08:00:00Z",
-    updatedAt: "",
-  },
-
-  {
-    id: '4',
-    title: "Fresh fruit donation box",
-    category: "Fruits & vegetables",
-    originalPrice: 0,
-    discountedPrice: 0,
-    quantity: 10,
-    status: "ACTIVE",
-    type: "DONATION",
-    businessId: "1",
-    locationId: "1",
-    description: "A box of assorted fresh fruits for donation.",
-    collectionStart: "2024-06-01T10:00:00Z",
-    collectionEnd: "2024-06-01T12:00:00Z",
-    createdAt: "2024-05-30T08:00:00Z",
-    updatedAt: "2024-05-30T08:00:00Z",
-  },
-  {
-    id: '5',
-    title: "Evening pastry selection",
-    category: "Bakery",
-    originalPrice: 80,
-    discountedPrice: 40,
-    quantity: 4,
-    status: "PAUSED",
-    type: "DISCOUNTED",
-    businessId: "1",
-    locationId: "1",
-    description: "A selection of pastries for the evening.",
-    collectionStart: "2024-06-01T10:00:00Z",
-    collectionEnd: "2024-06-01T12:00:00Z",
-    createdAt: "2024-05-30T08:00:00Z",
-    updatedAt: "2024-05-30T08:00:00Z",
-  },
-];
+import { FoodListing} from "@/types";
+import { ListingStatus } from "@/app/generated/prisma/enums";
 
 const statusLabels: Record<ListingStatus, string> = {
   ACTIVE: "Active",
@@ -103,10 +13,39 @@ const statusLabels: Record<ListingStatus, string> = {
   EXPIRED: "Expired",
 };
 
+
 export default function ManageListingsPage() {
-  const [listings, setListings] = useState(initialListings);
+  const [listings, setListings] = useState<FoodListing[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("ALL");
+
+  useEffect(() => {
+  async function fetchListings() {
+    try {
+      const response = await fetch("/api/business/listings");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch listings");
+      }
+
+      const data = await response.json();
+
+ setListings(data.listings as FoodListing[]);
+
+if (loading) {
+  return <p className="p-6">Loading listings...</p>;
+}
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchListings();
+}, [loading]);
+
 
   const filteredListings = listings.filter((listing) => {
     const matchesSearch = listing.title
@@ -119,13 +58,41 @@ export default function ManageListingsPage() {
     return matchesSearch && matchesFilter;
   });
 
-  function updateStatus(id: string, status: ListingStatus) {
+  // function updateStatus(id: string, status: ListingStatus) {
+  //   setListings((previous) =>
+  //     previous.map((listing) =>
+  //       listing.id === id ? { ...listing, status } : listing
+  //     )
+  //   );
+  // }
+
+  //Update listing status on the server and update the state
+  async function updateStatus(id: string, status: ListingStatus) {
+  try {
+    const response = await fetch("/api/business/listings", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id, status }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update listing.");
+    }
+
     setListings((previous) =>
       previous.map((listing) =>
         listing.id === id ? { ...listing, status } : listing
       )
     );
+  } catch (error) {
+    console.error("Update listing error:", error);
+    alert(error instanceof Error ? error.message : "Something went wrong.");
   }
+}
 
   function handleCancel(id: string) {
     const confirmed = window.confirm(
@@ -203,10 +170,11 @@ export default function ManageListingsPage() {
           className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-forest"
         >
           <option value="ALL">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="PAUSED">Paused</option>
-          <option value="SOLD_OUT">Sold out</option>
-          <option value="EXPIRED">Expired</option>
+          {Object.values(ListingStatus).map((status) => (
+            <option key={status} value={status}>
+              {status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -250,7 +218,7 @@ export default function ManageListingsPage() {
                     ) : (
                       <>
                         <span className="font-bold text-forest">
-                          R{listing.discountedPrice}
+                          R{listing.price}
                         </span>
                         <span className="text-xs text-muted line-through">
                           R{listing.originalPrice}
@@ -258,7 +226,7 @@ export default function ManageListingsPage() {
                       </>
                     )}
                     <span className="text-xs text-muted">
-                      · {listing.quantity} available
+                      · {listing.quantityAvailable} available
                     </span>
                   </div>
                 </div>
@@ -296,7 +264,7 @@ export default function ManageListingsPage() {
                   </button>
                 )}
 
-                {listing.status === "ACTIVE" && listing.quantity > 0 && (
+                {listing.status === "ACTIVE" && listing.quantityAvailable > 0 && (
                   <button
                     onClick={() => updateStatus(listing.id, "SOLD_OUT")}
                     className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-charcoal hover:bg-gray-50"

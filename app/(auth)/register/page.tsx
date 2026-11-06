@@ -4,6 +4,8 @@ import { useState, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { RegistrationForm } from "@/types";
 import { BusinessType, UserRole } from "@/app/generated/prisma/enums";
+import { useRouter } from "next/navigation";
+
 
 const initialForm: RegistrationForm = {
   role: "CUSTOMER",
@@ -22,10 +24,12 @@ const initialForm: RegistrationForm = {
   businessType: "",
 };
 
+
 export default function RegisterPage() {
   const [form, setForm] = useState<RegistrationForm>(initialForm);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   function handleChange(field: keyof RegistrationForm, value: string) {
     setForm((current) => ({
@@ -73,12 +77,11 @@ export default function RegisterPage() {
 
       // Clear the form after successful registration
       setForm({
-        ...form,
-        fullName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
+        ...initialForm,
       });
+      router.push(
+          `/login?registered=true&email=${encodeURIComponent(form.email.trim())}`
+      );
     } catch {
       setError("Unable to connect to the server. Please try again.");
     }

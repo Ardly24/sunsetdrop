@@ -1,16 +1,21 @@
 
 "use client";
 
-import { useState, type SyntheticEvent } from "react";
+import { useState, type SyntheticEvent, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
+function LoginForm(){
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered") === "true";
+  const registeredEmail = searchParams.get("email") || "";
+  const [email, setEmail] = useState(registeredEmail);
+
 
 async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
   event.preventDefault();
@@ -29,7 +34,7 @@ async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email,
+        email: email.trim(),
         password,
       }),
     });
@@ -41,19 +46,33 @@ async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
       return;
     }
 
-    // Login successful
+    // Clear login fields
     setEmail("");
     setPassword("");
     setShowPassword(false);
     setError("");
 
-    if (data.user.role === "BUSINESS") {
-      router.push("/business/dashboard");
-    } else if (data.user.role === "CHARITY") {
-      router.push("/charity/dashboard");
-    } else {
-      router.push("/");
+    // Redirect according to account role
+    switch (data.user.role) {
+      case "BUSINESS":
+        router.push("/business/dashboard");
+        break;
+
+      case "CHARITY":
+        router.push("/charity/dashboard");
+        break;
+
+      case "ADMIN":
+        router.push("/admin/dashboard");
+        break;
+
+      case "CUSTOMER":
+      default:
+        router.push("/");
+        break;
     }
+
+    router.refresh();
 
   } catch {
     setError("Unable to connect to the server. Please try again.");
@@ -72,9 +91,7 @@ async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
           Log in to SunsetDrop
         </h1>
 
-        <p className="mt-3 text-muted">
-          Your favourite food. Better prices.
-        </p>
+        <p className="mt-3 text-muted">Your favourite food. Better prices.</p>
       </div>
 
       <form
@@ -140,6 +157,12 @@ async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
           </div>
         </div>
 
+        {registered && (
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Registration successful! Please log in to continue.
+          </div>
+        )}
+
         {error && (
           <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             {error}
@@ -164,5 +187,13 @@ async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
         </p>
       </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading login...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

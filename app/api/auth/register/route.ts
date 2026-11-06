@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       website,
       businessType,
     } = body;
+   
 
     // Validate common required fields
     if (

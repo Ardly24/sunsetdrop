@@ -2,19 +2,6 @@ import { ID } from "./common";
 
 export type ListingType = "DISCOUNTED" | "DONATION";
 
-// export interface FoodListing {
-//   //id: ID;
-//   id: number;
-//   title: string;
-//   category: string;
-//   originalPrice: number;
-//   discountedPrice: number;
-//   quantity: number;
-//   status: ListingStatus;
-//   type: ListingType;
-// }
-
-
 export type ListingStatus =
   | "ACTIVE"
   | "PAUSED"
@@ -24,20 +11,26 @@ export type ListingStatus =
 
 export interface FoodListing {
   id: ID;
-  businessId: ID;
-  locationId: ID;
+  branchId: ID;
   title: string;
-  description: string;
+  description: string | null;
   category: string;
-  originalPrice: number;
-  discountedPrice: number;
-  quantity: number;
-  status: ListingStatus;
   type: ListingType;
-  collectionStart: string;
-  collectionEnd: string;
+  status: ListingStatus;
+  price: number | string;
+  originalPrice: number | string | null;
+  quantityAvailable: number;
+  quantitySold: number;
+  weightPerItemKg: number | string | null;
+  imageUrl: string | null;
+  expiresAt: string | null;
+  collectionStartsAt: string;
+  collectionEndsAt: string;
+  ingredients: string | null;
+  allergens: string;
+  storageInstructions: string | null;
+  collectionInstructions: string;
   createdAt: string;
   updatedAt: string;
 }
-
 

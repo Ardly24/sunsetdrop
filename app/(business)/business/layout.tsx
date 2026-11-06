@@ -1,6 +1,8 @@
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { verifyRole } from "@/lib/dal";
+import LogoutButton from "@/app/components/layout/logoutButton";
 
 const navigation = [
   {
@@ -20,13 +22,31 @@ const navigation = [
   },
 ];
 
-export default async function BusinessLayout({
+export default function BusinessLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#F7F8F5]">
+          <p className="text-sm text-muted">Loading business workspace...</p>
+        </div>
+      }
+    >
+      <BusinessLayoutContent>{children}</BusinessLayoutContent>
+    </Suspense>
+  );
+}
 
+async function BusinessLayoutContent({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const user = await verifyRole("BUSINESS");
+
   return (
     <div className="min-h-screen bg-[#F7F8F5] md:flex">
       {/* Sidebar */}
@@ -38,9 +58,7 @@ export default async function BusinessLayout({
           >
             SunsetDrop<span className="text-sunset">.</span>
           </Link>
-          <p className="mt-1 text-xs text-muted">
-            Business Portal
-          </p>
+          <p className="mt-1 text-xs text-muted">Business Portal</p>
         </div>
 
         <nav className="flex gap-2 overflow-x-auto p-4 md:flex-col">
@@ -57,9 +75,7 @@ export default async function BusinessLayout({
         </nav>
 
         <div className="hidden border-t border-gray-100 p-5 md:block">
-          <p className="text-xs text-muted">
-            Good food deserves a chance.
-          </p>
+          <p className="text-xs text-muted">Good food deserves a chance.</p>
         </div>
       </aside>
 
@@ -70,29 +86,26 @@ export default async function BusinessLayout({
             <p className="text-sm font-medium text-charcoal">
               Business workspace
             </p>
-            <p className="text-xs text-muted">
-              Manage your food deals
-            </p>
+            <p className="text-xs text-muted">Manage your food deals</p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-forest text-sm font-bold text-white">
               {user.fullName.charAt(0).toUpperCase()}
             </div>
+
             <div className="hidden sm:block">
               <p className="text-sm font-semibold text-charcoal">
                 {user.fullName}
               </p>
-              <p className="text-xs text-muted">
-                Business owner
-              </p>
+              <p className="text-xs text-muted">Business owner</p>
             </div>
+
+            <LogoutButton />
           </div>
         </header>
 
-        <main className="p-6 md:p-10">
-          {children}
-        </main>
+        <main className="p-6 md:p-10">{children}</main>
       </div>
     </div>
   );
