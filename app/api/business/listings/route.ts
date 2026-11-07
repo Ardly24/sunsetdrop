@@ -1,33 +1,22 @@
-
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { verifySession } from "@/lib/auth";
-import {FoodCategory, ListingType, ListingStatus} from "@/app/generated/prisma/enums";
+import {
+  FoodCategory,
+  ListingType,
+  ListingStatus,
+} from "@/app/generated/prisma/enums";
+import { getSessionUserId } from "@/lib/api-auth";
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
+    const userId = await getSessionUserId();
 
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 }
-      );
-    }
-
-    const payload = await verifySession(token);
-
-    if (!payload || typeof payload.userId !== "string") {
-      return NextResponse.json(
-        { message: "Invalid session." },
-        { status: 401 }
-      );
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
+      where: { id: userId },
       select: {
         id: true,
         role: true,
@@ -40,33 +29,30 @@ export async function GET() {
     });
 
     if (!user || user.role !== "BUSINESS") {
-      return NextResponse.json(
-        { message: "Forbidden." },
-        { status: 403 }
-      );
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
     }
 
     if (!user.branch) {
       return NextResponse.json(
         { message: "Business branch not found." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-await prisma.listing.updateMany({
-  where: {
-    branchId: user.branch.id,
-    expiresAt: {
-      lte: new Date(),
-    },
-    status: {
-      in: ["ACTIVE", "PAUSED"],
-    },
-  },
-  data: {
-    status: "EXPIRED",
-  },
-});
+    await prisma.listing.updateMany({
+      where: {
+        branchId: user.branch.id,
+        expiresAt: {
+          lte: new Date(),
+        },
+        status: {
+          in: ["ACTIVE", "PAUSED"],
+        },
+      },
+      data: {
+        status: "EXPIRED",
+      },
+    });
 
     const listings = await prisma.listing.findMany({
       where: {
@@ -83,35 +69,21 @@ await prisma.listing.updateMany({
 
     return NextResponse.json(
       { message: "Unable to fetch listings." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
+    const userId = await getSessionUserId();
 
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 }
-      );
-    }
-
-    const payload = await verifySession(token);
-
-    if (!payload || typeof payload.userId !== "string") {
-      return NextResponse.json(
-        { message: "Invalid session." },
-        { status: 401 }
-      );
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
+      where: { id: userId },
       select: {
         id: true,
         role: true,
@@ -125,16 +97,13 @@ export async function POST(request: Request) {
     });
 
     if (!user || user.role !== "BUSINESS") {
-      return NextResponse.json(
-        { message: "Forbidden." },
-        { status: 403 }
-      );
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
     }
 
     if (!user.branch || !user.branch.isActive) {
       return NextResponse.json(
         { message: "Active business branch not found." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -170,21 +139,21 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { message: "Please complete all required fields." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!Object.values(FoodCategory).includes(category)) {
       return NextResponse.json(
         { message: "Invalid food category." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!Object.values(ListingType).includes(type)) {
       return NextResponse.json(
         { message: "Invalid listing type." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -199,12 +168,12 @@ export async function POST(request: Request) {
       Number.isNaN(startDate.getTime()) ||
       Number.isNaN(endDate.getTime()) ||
       Number.isNaN(expiryDate.getTime()) ||
-      endDate <= startDate || 
-     expiryDate.getTime() <= Date.now()
+      endDate <= startDate ||
+      expiryDate.getTime() <= Date.now()
     ) {
       return NextResponse.json(
         { message: "Invalid quantity or collection dates." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -224,7 +193,7 @@ export async function POST(request: Request) {
       ) {
         return NextResponse.json(
           { message: "Please provide valid discounted pricing." },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -254,41 +223,28 @@ export async function POST(request: Request) {
         message: "Listing created successfully.",
         listing,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Create listing error:", error);
 
     return NextResponse.json(
       { message: "Unable to create listing." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
+    const userId = await getSessionUserId();
 
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 }
-      );
-    }
-
-    const payload = await verifySession(token);
-
-    if (!payload || typeof payload.userId !== "string") {
-      return NextResponse.json(
-        { message: "Invalid session." },
-        { status: 401 }
-      );
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
+      where: { id: userId },
       select: {
         role: true,
         branch: {
@@ -298,16 +254,13 @@ export async function PATCH(request: Request) {
     });
 
     if (!user || user.role !== "BUSINESS") {
-      return NextResponse.json(
-        { message: "Forbidden." },
-        { status: 403 }
-      );
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
     }
 
     if (!user.branch || !user.branch.isActive) {
       return NextResponse.json(
         { message: "Active business branch not found." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -320,7 +273,7 @@ export async function PATCH(request: Request) {
     ) {
       return NextResponse.json(
         { message: "Invalid listing ID or status." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -338,7 +291,7 @@ export async function PATCH(request: Request) {
     if (result.count === 0) {
       return NextResponse.json(
         { message: "Listing not found." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -350,7 +303,127 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(
       { message: "Unable to update listing status." },
-      { status: 500 }
+      { status: 500 },
+    );
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const userId = await getSessionUserId();
+
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        branch: {
+          select: {
+            id: true,
+            isActive: true,
+          },
+        },
+      },
+    });
+
+    if (!user || user.role !== "BUSINESS") {
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
+    }
+
+    if (!user.branch || !user.branch.isActive) {
+      return NextResponse.json(
+        { message: "Active business branch not found." },
+        { status: 403 },
+      );
+    }
+
+    const { id, title, description, price, originalPrice, quantityAvailable } =
+      await request.json();
+
+    if (
+      typeof id !== "string" ||
+      typeof title !== "string" || !title.trim() ||
+      typeof description !== "string" || !description.trim()
+    ) {
+      return NextResponse.json(
+        { message: "Invalid listing details." },
+        { status: 400 },
+      );
+    }
+
+    const listing = await prisma.listing.findFirst({
+      where: {
+        id,
+        branchId: user.branch.id,
+        status: {
+          in: ["ACTIVE", "PAUSED"],
+        },
+      },
+    });
+
+    if (!listing) {
+      return NextResponse.json(
+        { message: "Listing not found or cannot be edited." },
+        { status: 404 },
+      );
+    }
+
+    const parsedQuantity = Number(quantityAvailable);
+    const parsedPrice = Number(price);
+    const parsedOriginalPrice =
+      originalPrice === "" || originalPrice === null
+        ? null
+        : Number(originalPrice);
+
+    if (
+      !Number.isSafeInteger(parsedQuantity) ||
+      parsedQuantity < listing.quantitySold ||
+      !Number.isFinite(parsedPrice) ||
+      parsedPrice < 0
+    ) {
+      return NextResponse.json(
+        { message: "Invalid price or quantity." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      listing.type === "DISCOUNTED" &&
+      (!Number.isFinite(parsedOriginalPrice) ||
+        parsedOriginalPrice === null ||
+        parsedPrice <= 0 ||
+        parsedOriginalPrice <= parsedPrice)
+    ) {
+      return NextResponse.json(
+        { message: "Please provide valid discounted pricing." },
+        { status: 400 },
+      );
+    }
+
+    const updatedListing = await prisma.listing.update({
+      where: { id },
+      data: {
+        title: title.trim(),
+        description: description.trim(),
+        price: listing.type === "DONATION" ? 0 : parsedPrice,
+        originalPrice: listing.type === "DONATION" ? null : parsedOriginalPrice,
+        quantityAvailable: parsedQuantity,
+      },
+    });
+
+    return NextResponse.json({
+      message: "Listing updated successfully.",
+      listing: updatedListing,
+    });
+  } catch (error) {
+    console.error("Update listing error:", error);
+
+    return NextResponse.json(
+      { message: "Unable to update listing." },
+      { status: 500 },
     );
   }
 }
