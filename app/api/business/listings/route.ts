@@ -53,6 +53,21 @@ export async function GET() {
       );
     }
 
+await prisma.listing.updateMany({
+  where: {
+    branchId: user.branch.id,
+    expiresAt: {
+      lte: new Date(),
+    },
+    status: {
+      in: ["ACTIVE", "PAUSED"],
+    },
+  },
+  data: {
+    status: "EXPIRED",
+  },
+});
+
     const listings = await prisma.listing.findMany({
       where: {
         branchId: user.branch.id,
@@ -135,6 +150,7 @@ export async function POST(request: Request) {
       quantity,
       collectionStart,
       collectionEnd,
+      expiresAt,
       ingredients,
       allergens,
       storageInstructions,
@@ -149,7 +165,8 @@ export async function POST(request: Request) {
       !collectionInstructions?.trim() ||
       !quantity ||
       !collectionStart ||
-      !collectionEnd
+      !collectionEnd ||
+      !expiresAt
     ) {
       return NextResponse.json(
         { message: "Please complete all required fields." },
@@ -174,13 +191,16 @@ export async function POST(request: Request) {
     const parsedQuantity = Number(quantity);
     const startDate = new Date(collectionStart);
     const endDate = new Date(collectionEnd);
+    const expiryDate = new Date(expiresAt);
 
     if (
       !Number.isSafeInteger(parsedQuantity) ||
       parsedQuantity < 1 ||
       Number.isNaN(startDate.getTime()) ||
       Number.isNaN(endDate.getTime()) ||
-      endDate <= startDate
+      Number.isNaN(expiryDate.getTime()) ||
+      endDate <= startDate || 
+     expiryDate.getTime() <= Date.now()
     ) {
       return NextResponse.json(
         { message: "Invalid quantity or collection dates." },
@@ -221,6 +241,7 @@ export async function POST(request: Request) {
         quantityAvailable: parsedQuantity,
         collectionStartsAt: startDate,
         collectionEndsAt: endDate,
+        expiresAt: expiryDate,
         ingredients: ingredients?.trim() || null,
         allergens: allergens.trim(),
         storageInstructions: storageInstructions?.trim() || null,
@@ -295,7 +316,7 @@ export async function PATCH(request: Request) {
     if (
       typeof id !== "string" ||
       !Object.values(ListingStatus).includes(status) ||
-      !["ACTIVE", "PAUSED", "SOLD_OUT", "EXPIRED"].includes(status)
+      !["ACTIVE", "PAUSED", "SOLD_OUT", "EXPIRED", "CANCELLED"].includes(status)
     ) {
       return NextResponse.json(
         { message: "Invalid listing ID or status." },

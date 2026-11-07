@@ -7,7 +7,7 @@ export type ListingStatus =
   | "PAUSED"
   | "SOLD_OUT"
   | "EXPIRED"
-  //| "CANCELLED";
+  | "CANCELLED";
 
 export interface FoodListing {
   id: ID;

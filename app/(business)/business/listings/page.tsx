@@ -11,6 +11,7 @@ const statusLabels: Record<ListingStatus, string> = {
   PAUSED: "Paused",
   SOLD_OUT: "Sold out",
   EXPIRED: "Expired",
+  CANCELLED: "Cancelled",
 };
 
 
@@ -19,6 +20,8 @@ export default function ManageListingsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("ALL");
+  const [selectedListing, setSelectedListing] = useState<FoodListing | null>(null);
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
 
   useEffect(() => {
   async function fetchListings() {
@@ -100,7 +103,7 @@ if (loading) {
     );
 
     if (confirmed) {
-      updateStatus(id, "EXPIRED");
+      updateStatus(id, "CANCELLED");
     }
   }
 
@@ -274,11 +277,12 @@ if (loading) {
                 )}
 
                 {listing.status !== "EXPIRED" &&
-                  listing.status !== "SOLD_OUT" && (
-                    <button
-                      onClick={() => handleCancel(listing.id)}
-                      className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
-                    >
+                listing.status !== "CANCELLED" &&
+                listing.status !== "SOLD_OUT" && (
+                  <button
+                    onClick={() => handleCancel(listing.id)}
+                    className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  >
                       Cancel
                     </button>
                   )}

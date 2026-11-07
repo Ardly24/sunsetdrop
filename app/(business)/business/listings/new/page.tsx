@@ -16,6 +16,7 @@ export default function CreateListingPage() {
   quantity: "",
   collectionStart: "",
   collectionEnd: "",
+  expiresAt: "",
   ingredients: "",
   allergens: "",
   storageInstructions: "",
@@ -348,6 +349,22 @@ export default function CreateListingPage() {
                 className={inputClass}
                 required
               />
+            </div>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+            <label className={labelClass} htmlFor="expiresAt">
+              Listing expires at *
+            </label>
+            <input
+              id="expiresAt"
+              name="expiresAt"
+              type="datetime-local"
+              value={formData.expiresAt}
+              onChange={handleChange}
+              className={inputClass}
+              required
+            />
             </div>
           </div>
 

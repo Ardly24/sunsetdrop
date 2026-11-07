@@ -37,6 +37,7 @@ enum ListingStatus {
   PAUSED
   SOLD_OUT
   EXPIRED
+  CANCELLED
 }
 
 enum FoodCategory {
@@ -48,7 +49,6 @@ enum FoodCategory {
   GROCERIES
   OTHER
 }
-
 
 model User {
   id           String   @id @default(cuid())
