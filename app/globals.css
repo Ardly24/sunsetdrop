@@ -11,7 +11,7 @@
   --sunset: #F5A64A;
   --cream: #FFF9F0;
   --charcoal: #26332D;
-  --muted: oklch(0.97 0 0);
+  --brand-muted: #718078;
 
   /* Application colours */
   --border: oklch(0.922 0 0);
@@ -55,7 +55,7 @@
   --color-sunset: var(--sunset);
   --color-cream: var(--cream);
   --color-charcoal: var(--charcoal);
-  --color-muted: var(--muted);
+  --color-brand-muted: var(--brand-muted);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);

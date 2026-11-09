@@ -4,27 +4,30 @@ import { useState, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { ListingType } from "@/types";
 import { FoodCategory } from "@/app/generated/prisma/enums";
+import Image from "next/image";
 
 export default function CreateListingPage() {
-
   const initialFormData = {
-  title: "",
-  category: "",
-  description: "",
-  originalPrice: "",
-  discountedPrice: "",
-  quantity: "",
-  collectionStart: "",
-  collectionEnd: "",
-  expiresAt: "",
-  ingredients: "",
-  allergens: "",
-  storageInstructions: "",
-  collectionInstructions: "",
-};
+    title: "",
+    category: "",
+    description: "",
+    originalPrice: "",
+    discountedPrice: "",
+    quantity: "",
+    collectionStart: "",
+    collectionEnd: "",
+    expiresAt: "",
+    ingredients: "",
+    allergens: "",
+    storageInstructions: "",
+    collectionInstructions: "",
+  };
   const [listingType, setListingType] = useState<ListingType>("DISCOUNTED");
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState(initialFormData);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   function handleChange(
     event: React.ChangeEvent<
@@ -41,10 +44,36 @@ export default function CreateListingPage() {
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setSubmitted(false);
 
     try {
+      let uploadedPhotos: {
+        fileId: string;
+        url: string;
+        name: string;
+      }[] = [];
+
+      if (photos.length > 0) {
+        const photoFormData = new FormData();
+
+        photos.forEach((photo) => {
+          photoFormData.append("photos", photo);
+        });
+
+        const uploadResponse = await fetch("/api/uploads", {
+          method: "POST",
+          body: photoFormData,
+        });
+
+        const uploadResult = await uploadResponse.json();
+
+        if (!uploadResponse.ok) {
+          throw new Error(uploadResult.error || "Photo upload failed.");
+        }
+
+        uploadedPhotos = uploadResult.photos;
+      }
+
       const response = await fetch("/api/business/listings", {
         method: "POST",
         headers: {
@@ -58,6 +87,7 @@ export default function CreateListingPage() {
           discountedPrice:
             listingType === "DONATION" ? 0 : Number(formData.discountedPrice),
           quantity: Number(formData.quantity),
+          photos: uploadedPhotos,
         }),
       });
 
@@ -70,6 +100,8 @@ export default function CreateListingPage() {
       setFormData(initialFormData);
       setListingType("DISCOUNTED");
       setSubmitted(true);
+      setPhotos([]);
+      setPhotoPreviews([]);
 
       window.scrollTo({
         top: 0,
@@ -91,23 +123,25 @@ export default function CreateListingPage() {
       <div>
         <Link
           href="/business/listings"
-          className="text-sm font-medium text-muted hover:text-forest"
+          className="text-sm font-medium text-brand-muted hover:text-forest"
         >
           ← Back to listings
         </Link>
 
-        <h1 className="mt-4 text-3xl font-bold text-charcoal">
-          Create a listing
+        <h1 className="mt-2 text-3xl font-bold text-charcoal">
+          {" "}
+          Create a listing{" "}
         </h1>
 
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-brand-muted">
           Share your available food deals and help good food find a home.
         </p>
       </div>
 
       {submitted && (
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Listing created successfully! Your food listing has been saved and is ready to manage.
+          Listing created successfully! Your food listing has been saved and is
+          ready to manage.
           <button
             type="button"
             onClick={() => setSubmitted(false)}
@@ -121,9 +155,14 @@ export default function CreateListingPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Listing type */}
         <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-charcoal"> 1. Choose listing type </h2>
+          <h2 className="text-lg font-bold text-charcoal">
+            {" "}
+            1. Choose listing type{" "}
+          </h2>
 
-          <p className="mt-1 text-sm text-muted">Decide how you want to offer your food.</p>
+          <p className="mt-1 text-sm text-brand-muted">
+            Decide how you want to offer your food.
+          </p>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <button
@@ -137,7 +176,7 @@ export default function CreateListingPage() {
             >
               <span className="text-2xl">🏷️</span>
               <p className="mt-3 font-bold text-charcoal">Discounted deal</p>
-              <p className="mt-1 text-xs leading-5 text-muted">
+              <p className="mt-1 text-xs leading-5 text-brand-muted">
                 Sell food at a reduced price to consumers.
               </p>
               {listingType === "DISCOUNTED" && (
@@ -156,7 +195,7 @@ export default function CreateListingPage() {
             >
               <span className="text-2xl">💚</span>
               <p className="mt-3 font-bold text-charcoal">Food donation</p>
-              <p className="mt-1 text-xs leading-5 text-muted">
+              <p className="mt-1 text-xs leading-5 text-brand-muted">
                 Give food free of charge to eligible charities.
               </p>
               {listingType === "DONATION" && (
@@ -169,12 +208,17 @@ export default function CreateListingPage() {
         {/* Food information */}
         <section className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-lg font-bold text-charcoal">2. Food information</h2>
-            <p className="mt-1 text-sm text-muted">Tell customers what you&apos;re offering.</p>
+            <h2 className="text-lg font-bold text-charcoal">
+              2. Food information
+            </h2>
+            <p className="mt-1 text-sm text-brand-muted">
+              Tell customers what you&apos;re offering.
+            </p>
           </div>
 
           <div>
             <label className={labelClass} htmlFor="title">
+              {" "}
               Listing title *
             </label>
             <input
@@ -189,7 +233,9 @@ export default function CreateListingPage() {
           </div>
 
           <div>
-            <label className={labelClass} htmlFor="category">Food category *</label>
+            <label className={labelClass} htmlFor="category">
+              Food category *
+            </label>
             <select
               id="category"
               name="category"
@@ -201,14 +247,20 @@ export default function CreateListingPage() {
               <option value="">Select a category</option>
               {Object.values(FoodCategory).map((category) => (
                 <option key={category} value={category}>
-                  {category.replace(/_/g, " - ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
+                  {category
+                    .replace(/_/g, " - ")
+                    .toLowerCase()
+                    .replace(/\b\w/g, (c) => c.toUpperCase())}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className={labelClass} htmlFor="description"> Description *</label>
+            <label className={labelClass} htmlFor="description">
+              {" "}
+              Description *
+            </label>
             <textarea
               id="description"
               name="description"
@@ -228,18 +280,120 @@ export default function CreateListingPage() {
             <input
               id="photo"
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
               className={inputClass}
+              disabled={photos.length >= 5}
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+
+                setPhotoError(null);
+
+                if (photos.length + files.length > 5) {
+                  setPhotoError("You can upload a maximum of 5 photos.");
+                  e.target.value = "";
+                  return;
+                }
+
+                const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+                const invalidFile = files.find(
+                  (file) => !allowedTypes.includes(file.type),
+                );
+
+                if (invalidFile) {
+                  setPhotoError("Please select JPEG, PNG, or WebP images.");
+                  e.target.value = "";
+                  return;
+                }
+
+                const oversizedFile = files.find(
+                  (file) => file.size > 5 * 1024 * 1024,
+                );
+
+                if (oversizedFile) {
+                  setPhotoError("Each image must not exceed 5 MB.");
+                  e.target.value = "";
+                  return;
+                }
+
+                const allFileNames = [
+                  ...photos.map((photo) => photo.name.toLowerCase()),
+                  ...files.map((file) => file.name.toLowerCase()),
+                ];
+
+                if (new Set(allFileNames).size !== allFileNames.length) {
+                  setPhotoError(
+                    "You cannot select photos with duplicate filenames.",
+                  );
+                  e.target.value = "";
+                  return;
+                }
+
+                setPhotos((prev) => [...prev, ...files]);
+
+                setPhotoPreviews((prev) => [
+                  ...prev,
+                  ...files.map((file) => URL.createObjectURL(file)),
+                ]);
+
+                e.target.value = "";
+              }}
             />
-            <p className="mt-2 text-xs text-muted">Image uploading will be connected later. </p>
+            {photoError && (
+              <p className="mt-2 text-xs font-medium text-red-600">
+                {photoError}
+              </p>
+            )}
+
+            {photoPreviews.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {photoPreviews.map((preview, index) => (
+                  <div key={preview} className="relative">
+                    <Image
+                      src={preview}
+                      alt={`Food preview ${index + 1}`}
+                      width={400}
+                      height={300}
+                      unoptimized
+                      className="h-32 w-full rounded-xl border border-gray-200 object-cover"
+                    />
+
+                    {index === 0 && (
+                      <span className="absolute left-2 top-2 rounded-md bg-forest px-2 py-1 text-xs text-white">
+                        Cover photo
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotos((prev) => prev.filter((_, i) => i !== index));
+                        setPhotoPreviews((prev) =>
+                          prev.filter((_, i) => i !== index),
+                        );
+                      }}
+                      className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mb-2 text-xs font-medium text-brand-muted">
+              {photos.length} / 5 photos selected
+            </p>
           </div>
         </section>
 
         {/* Pricing and quantity */}
         <section className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-lg font-bold text-charcoal">3. Pricing and quantity</h2>
-            <p className="mt-1 text-sm text-muted">
+            <h2 className="text-lg font-bold text-charcoal">
+              3. Pricing and quantity
+            </h2>
+            <p className="mt-1 text-sm text-brand-muted">
               {listingType === "DISCOUNTED"
                 ? "Set your discounted price and available quantity."
                 : "Donations are free for eligible charities."}
@@ -286,8 +440,10 @@ export default function CreateListingPage() {
             </div>
           ) : (
             <div className="rounded-xl bg-[#F0F5F0] p-4">
-              <p className="text-sm font-semibold text-forest">Donation price: R0.00</p>
-              <p className="mt-1 text-xs text-muted">
+              <p className="text-sm font-semibold text-forest">
+                Donation price: R0.00
+              </p>
+              <p className="mt-1 text-xs text-brand-muted">
                 This listing will be offered free of charge through the charity
                 claim workflow.
               </p>
@@ -295,7 +451,10 @@ export default function CreateListingPage() {
           )}
 
           <div>
-            <label className={labelClass} htmlFor="quantity"> Available quantity * </label>
+            <label className={labelClass} htmlFor="quantity">
+              {" "}
+              Available quantity *{" "}
+            </label>
             <input
               id="quantity"
               name="quantity"
@@ -314,9 +473,11 @@ export default function CreateListingPage() {
         {/* Collection details */}
         <section className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-lg font-bold text-charcoal">4. Collection details</h2>
-            <p className="mt-1 text-sm text-muted">
-              Let people know when and where food can be collected.
+            <h2 className="text-lg font-bold text-charcoal">
+              4. Collection details
+            </h2>
+            <p className="mt-1 text-sm text-brand-muted">
+              Let people know when and where food can be collected.{" "}
             </p>
           </div>
 
@@ -353,18 +514,18 @@ export default function CreateListingPage() {
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-            <label className={labelClass} htmlFor="expiresAt">
-              Listing expires at *
-            </label>
-            <input
-              id="expiresAt"
-              name="expiresAt"
-              type="datetime-local"
-              value={formData.expiresAt}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            />
+              <label className={labelClass} htmlFor="expiresAt">
+                Listing expires at *
+              </label>
+              <input
+                id="expiresAt"
+                name="expiresAt"
+                type="datetime-local"
+                value={formData.expiresAt}
+                onChange={handleChange}
+                className={inputClass}
+                required
+              />
             </div>
           </div>
 
@@ -389,9 +550,9 @@ export default function CreateListingPage() {
         <section className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div>
             <h2 className="text-lg font-bold text-charcoal">
-              5. Food safety information
+              5. Food safety information{" "}
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-sm text-brand-muted">
               Help customers and charities make informed choices.
             </p>
           </div>
@@ -413,7 +574,7 @@ export default function CreateListingPage() {
 
           <div>
             <label className={labelClass} htmlFor="allergens">
-              Allergens *
+              Allergens *{" "}
             </label>
             <input
               id="allergens"
@@ -427,7 +588,10 @@ export default function CreateListingPage() {
           </div>
 
           <div>
-            <label className={labelClass} htmlFor="storageInstructions"> Storage instructions</label>
+            <label className={labelClass} htmlFor="storageInstructions">
+              {" "}
+              instructions
+            </label>
             <textarea
               id="storageInstructions"
               name="storageInstructions"
@@ -439,7 +603,8 @@ export default function CreateListingPage() {
             />
           </div>
 
-          <p className="rounded-xl bg-[#FFF9F0] p-4 text-xs leading-5 text-muted">
+          <p className="rounded-xl bg-[#FFF9F0] p-4 text-xs leading-5 text-brand-muted">
+            {" "}
             Please provide accurate allergen and food safety information. If
             cross-contamination information is relevant, disclose it clearly. Do
             not claim a food is allergen-free without being able to verify that.

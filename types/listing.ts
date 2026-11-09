@@ -32,5 +32,13 @@ export interface FoodListing {
   collectionInstructions: string;
   createdAt: string;
   updatedAt: string;
+  images: {
+  id: ID;
+  fileId: string;
+  url: string;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
+}[];
 }
 

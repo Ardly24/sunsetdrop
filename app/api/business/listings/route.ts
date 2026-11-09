@@ -58,6 +58,13 @@ export async function GET() {
       where: {
         branchId: user.branch.id,
       },
+      include: {
+        images: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -124,6 +131,7 @@ export async function POST(request: Request) {
       allergens,
       storageInstructions,
       collectionInstructions,
+      photos,
     } = body;
 
     if (
@@ -139,6 +147,23 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { message: "Please complete all required fields." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !Array.isArray(photos) ||
+      photos.length > 5 ||
+      photos.some(
+        (photo) =>
+          !photo ||
+          typeof photo.fileId !== "string" ||
+          typeof photo.url !== "string" ||
+          typeof photo.name !== "string",
+      )
+    ) {
+      return NextResponse.json(
+        { message: "Invalid listing photos." },
         { status: 400 },
       );
     }
@@ -215,6 +240,27 @@ export async function POST(request: Request) {
         allergens: allergens.trim(),
         storageInstructions: storageInstructions?.trim() || null,
         collectionInstructions: collectionInstructions.trim(),
+        images: {
+          create: photos.map(
+            (
+              photo: { fileId: string; url: string; name: string },
+              index: number,
+            ) => ({
+              fileId: photo.fileId,
+              url: photo.url,
+              name: photo.name,
+              sortOrder: index,
+            }),
+          ),
+        },
+      },
+
+      include: {
+        images: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
       },
     });
 
@@ -345,8 +391,10 @@ export async function PUT(request: Request) {
 
     if (
       typeof id !== "string" ||
-      typeof title !== "string" || !title.trim() ||
-      typeof description !== "string" || !description.trim()
+      typeof title !== "string" ||
+      !title.trim() ||
+      typeof description !== "string" ||
+      !description.trim()
     ) {
       return NextResponse.json(
         { message: "Invalid listing details." },
@@ -411,6 +459,13 @@ export async function PUT(request: Request) {
         price: listing.type === "DONATION" ? 0 : parsedPrice,
         originalPrice: listing.type === "DONATION" ? null : parsedOriginalPrice,
         quantityAvailable: parsedQuantity,
+      },
+      include: {
+        images: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
       },
     });
 

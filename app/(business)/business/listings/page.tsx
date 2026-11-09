@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FoodListing } from "@/types";
 import { ListingStatus } from "@/app/generated/prisma/enums";
+import Image from "next/image";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +13,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const statusLabels: Record<ListingStatus, string> = {
   ACTIVE: "Active",
@@ -26,6 +37,7 @@ export default function ManageListingsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("ALL");
+  const [cancelListingId, setCancelListingId] = useState<string | null>(null);
 
   const [selectedListing, setSelectedListing] = useState<FoodListing | null>(
     null,
@@ -109,13 +121,7 @@ export default function ManageListingsPage() {
   }
 
   function handleCancel(id: string) {
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this listing?",
-    );
-
-    if (confirmed) {
-      updateStatus(id, "CANCELLED");
-    }
+    setCancelListingId(id);
   }
 
   async function handleSaveEdit() {
@@ -150,15 +156,11 @@ export default function ManageListingsPage() {
         ),
       );
 
-      // setIsEditDrawerOpen(false);
-      // setSelectedListing(null);
-
       setAlertMessage({
         title: "Success",
         message: "Listing updated successfully!",
         type: "success",
       });
-      //window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("Save listing error:", error);
       setAlertMessage({
@@ -260,8 +262,24 @@ export default function ManageListingsPage() {
             >
               {/* Listing details */}
               <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#F0F5F0] text-2xl">
+                {/* <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#F0F5F0] text-2xl">
                   {listing.category === "Bakery" ? "🥐" : "🥗"}
+                </div> */}
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#F0F5F0] text-2xl">
+                  {listing.images?.length > 0 ? (
+                    <Image
+                      src={listing.images[0].url}
+                      alt={listing.title}
+                      width={160}
+                      height={160}
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  ) : listing.category === "BAKERY" ? (
+                    "🥐"
+                  ) : (
+                    "🥗"
+                  )}
                 </div>
 
                 <div>
@@ -384,11 +402,14 @@ export default function ManageListingsPage() {
           }
         }}
       >
-        <SheetContent side="right" 
-         className="overflow-y-auto border-l border-[#E8E2D8] bg-[#FFF9F0] text-[#26332D]"
+        <SheetContent
+          side="right"
+          className="overflow-y-auto border-l border-[#E8E2D8] bg-[#FFF9F0] text-[#26332D]"
         >
           <SheetHeader>
-            <SheetTitle className="text-xl font-bold text-[#173D32]">Edit listing</SheetTitle>
+            <SheetTitle className="text-xl font-bold text-[#173D32]">
+              Edit listing
+            </SheetTitle>
             <SheetDescription className="text-sm text-[#718078]">
               Update the details of your food listing.
             </SheetDescription>
@@ -471,7 +492,7 @@ export default function ManageListingsPage() {
                 setEditForm({ ...editForm, originalPrice: e.target.value })
               }
               placeholder="0.00"
-             className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
+              className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
             />
           </div>
 
@@ -511,6 +532,38 @@ export default function ManageListingsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={cancelListingId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelListingId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this listing? This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={() => {
+                if (cancelListingId) {
+                  updateStatus(cancelListingId, "CANCELLED");
+                }
+                setCancelListingId(null);
+              }}
+            >
+              Yes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
