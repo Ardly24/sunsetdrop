@@ -6,6 +6,7 @@ import {
   ListingStatus,
 } from "@/app/generated/prisma/enums";
 import { getSessionUserId } from "@/lib/api-auth";
+import imagekit from "@/lib/imagekit";
 
 export async function GET() {
   try {
@@ -386,8 +387,32 @@ export async function PUT(request: Request) {
       );
     }
 
-    const { id, title, description, price, originalPrice, quantityAvailable } =
-      await request.json();
+    const {
+      id,
+      title,
+      description,
+      price,
+      originalPrice,
+      quantityAvailable,
+      photos,
+    } = await request.json();
+
+    if (
+      !Array.isArray(photos) ||
+      photos.length > 5 ||
+      photos.some(
+        (photo) =>
+          !photo ||
+          typeof photo.fileId !== "string" ||
+          typeof photo.url !== "string" ||
+          typeof photo.name !== "string",
+      )
+    ) {
+      return NextResponse.json(
+        { message: "Invalid listing photos." },
+        { status: 400 },
+      );
+    }
 
     if (
       typeof id !== "string" ||
@@ -418,6 +443,26 @@ export async function PUT(request: Request) {
         { status: 404 },
       );
     }
+
+    const currentImages = await prisma.listingImage.findMany({
+      where: { listingId: id },
+      select: { fileId: true },
+    });
+
+    //const currentFileIds = new Set(currentImages.map((image) => image.fileId));
+    const photoIds = photos.map((photo: { fileId: string }) => photo.fileId);
+
+    if (new Set(photoIds).size !== photoIds.length) {
+      return NextResponse.json(
+        { message: "Duplicate photos are not allowed." },
+        { status: 400 },
+      );
+    }
+
+    const submittedFileIds = new Set(photoIds);
+    const removedPhotoIds = currentImages
+      .filter((image) => !submittedFileIds.has(image.fileId))
+      .map((image) => image.fileId);
 
     const parsedQuantity = Number(quantityAvailable);
     const parsedPrice = Number(price);
@@ -451,24 +496,69 @@ export async function PUT(request: Request) {
       );
     }
 
-    const updatedListing = await prisma.listing.update({
-      where: { id },
-      data: {
-        title: title.trim(),
-        description: description.trim(),
-        price: listing.type === "DONATION" ? 0 : parsedPrice,
-        originalPrice: listing.type === "DONATION" ? null : parsedOriginalPrice,
-        quantityAvailable: parsedQuantity,
-      },
-      include: {
-        images: {
-          orderBy: {
-            sortOrder: "asc",
-          },
+    const updatedListing = await prisma.$transaction(async (tx) => {
+  await tx.listing.update({
+    where: { id },
+    data: {
+      title: title.trim(),
+      description: description.trim(),
+      price: listing.type === "DONATION" ? 0 : parsedPrice,
+      originalPrice:
+        listing.type === "DONATION" ? null : parsedOriginalPrice,
+      quantityAvailable: parsedQuantity,
+    },
+  });
+
+  // Replace the listing's database image records.
+  await tx.listingImage.deleteMany({
+    where: { listingId: id },
+  });
+
+  if (photos.length > 0) {
+    await tx.listingImage.createMany({
+      data: photos.map(
+        (
+          photo: { fileId: string; url: string; name: string },
+          index: number,
+        ) => ({
+          listingId: id,
+          fileId: photo.fileId,
+          url: photo.url,
+          name: photo.name,
+          sortOrder: index,
+        }),
+      ),
+    });
+  }
+
+  return tx.listing.findUniqueOrThrow({
+    where: { id },
+    include: {
+      images: {
+        orderBy: {
+          sortOrder: "asc",
         },
       },
-    });
+    },
+  });
+});
 
+if (removedPhotoIds.length > 0) {
+  const deletionResults = await Promise.allSettled(
+  removedPhotoIds.map((fileId) =>
+    imagekit.files.delete(fileId),
+  ),
+);
+
+deletionResults.forEach((result, index) => {
+  if (result.status === "rejected") {
+    console.error(
+      `Failed to delete ImageKit file ${removedPhotoIds[index]}:`,
+      result.reason,
+    );
+  }
+});
+}
     return NextResponse.json({
       message: "Listing updated successfully.",
       listing: updatedListing,

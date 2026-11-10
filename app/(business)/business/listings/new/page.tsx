@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ListingType } from "@/types";
 import { FoodCategory } from "@/app/generated/prisma/enums";
 import Image from "next/image";
+import { validatePhotos } from "@/lib/photo-utils";
 
 export default function CreateListingPage() {
   const initialFormData = {
@@ -289,20 +290,13 @@ export default function CreateListingPage() {
 
                 setPhotoError(null);
 
-                if (photos.length + files.length > 5) {
-                  setPhotoError("You can upload a maximum of 5 photos.");
-                  e.target.value = "";
-                  return;
-                }
-
-                const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
-                const invalidFile = files.find(
-                  (file) => !allowedTypes.includes(file.type),
+                const validationError = validatePhotos(
+                  files,
+                  5 - photos.length,
                 );
 
-                if (invalidFile) {
-                  setPhotoError("Please select JPEG, PNG, or WebP images.");
+                if (validationError) {
+                  setPhotoError(validationError);
                   e.target.value = "";
                   return;
                 }

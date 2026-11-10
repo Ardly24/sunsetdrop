@@ -5,14 +5,8 @@ import Link from "next/link";
 import { FoodListing } from "@/types";
 import { ListingStatus } from "@/app/generated/prisma/enums";
 import Image from "next/image";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import EditListing from "./components/EditListing";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +37,15 @@ export default function ManageListingsPage() {
     null,
   );
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [existingPhotos, setExistingPhotos] = useState<
+    NonNullable<FoodListing["images"]>
+  >([]);
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoOrder, setPhotoOrder] = useState<string[]>([]);
+
+  
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
@@ -68,10 +71,6 @@ export default function ManageListingsPage() {
         const data = await response.json();
 
         setListings(data.listings as FoodListing[]);
-
-        if (loading) {
-          return <p className="p-6">Loading listings...</p>;
-        }
       } catch (error) {
         console.error(error);
       } finally {
@@ -128,6 +127,37 @@ export default function ManageListingsPage() {
     if (!selectedListing) return;
 
     try {
+      let uploadedPhotos: {
+        fileId: string;
+        url: string;
+        name: string;
+      }[] = [];
+
+      if (newPhotos.length > 0) {
+        const formData = new FormData();
+
+        newPhotos.forEach((photo) => {
+          formData.append("photos", photo);
+        });
+
+        const uploadResponse = await fetch("/api/uploads", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadResponse.json();
+
+        if (!uploadResponse.ok) {
+          setAlertMessage({
+            title: "Upload failed",
+            message: uploadData.error || "Unable to upload photos.",
+            type: "error",
+          });
+          return;
+        }
+
+        uploadedPhotos = uploadData.photos;
+      }
       const response = await fetch("/api/business/listings", {
         method: "PUT",
         headers: {
@@ -136,6 +166,14 @@ export default function ManageListingsPage() {
         body: JSON.stringify({
           id: selectedListing.id,
           ...editForm,
+          photos: [...existingPhotos, ...uploadedPhotos].map(
+            (photo, index) => ({
+              fileId: photo.fileId,
+              url: photo.url,
+              name: photo.name,
+              sortOrder: index,
+            }),
+          ),
         }),
       });
 
@@ -262,9 +300,6 @@ export default function ManageListingsPage() {
             >
               {/* Listing details */}
               <div className="flex items-start gap-4">
-                {/* <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#F0F5F0] text-2xl">
-                  {listing.category === "Bakery" ? "🥐" : "🥗"}
-                </div> */}
                 <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#F0F5F0] text-2xl">
                   {listing.images?.length > 0 ? (
                     <Image
@@ -273,7 +308,6 @@ export default function ManageListingsPage() {
                       width={160}
                       height={160}
                       className="h-full w-full object-cover"
-                      loading="eager"
                     />
                   ) : listing.category === "BAKERY" ? (
                     "🥐"
@@ -368,6 +402,15 @@ export default function ManageListingsPage() {
                       <button
                         onClick={() => {
                           setSelectedListing(listing);
+                          setExistingPhotos(listing.images ?? []);
+                          setPhotoOrder(
+                            (listing.images ?? []).map(
+                              (photo) => `existing-${photo.id}`,
+                            ),
+                          );
+                          setNewPhotos([]);
+                          setNewPhotoPreviews([]);
+                          setPhotoError(null);
                           setEditForm({
                             title: listing.title,
                             description: listing.description ?? "",
@@ -391,7 +434,7 @@ export default function ManageListingsPage() {
         )}
       </div>
 
-      <Sheet
+      <EditListing
         open={isEditDrawerOpen}
         onOpenChange={(open) => {
           setIsEditDrawerOpen(open);
@@ -401,137 +444,23 @@ export default function ManageListingsPage() {
             setSelectedListing(null);
           }
         }}
-      >
-        <SheetContent
-          side="right"
-          className="overflow-y-auto border-l border-[#E8E2D8] bg-[#FFF9F0] text-[#26332D]"
-        >
-          <SheetHeader>
-            <SheetTitle className="text-xl font-bold text-[#173D32]">
-              Edit listing
-            </SheetTitle>
-            <SheetDescription className="text-sm text-[#718078]">
-              Update the details of your food listing.
-            </SheetDescription>
-          </SheetHeader>
-
-          {alertMessage && (
-            <Alert
-              className={`relative m-2 ${
-                alertMessage.type === "success"
-                  ? "border-green-200 bg-green-50 text-green-900"
-                  : alertMessage.type === "error"
-                    ? "border-red-200 bg-red-50 text-red-900"
-                    : "border-yellow-200 bg-yellow-50 text-yellow-900"
-              }`}
-            >
-              <AlertTitle>{alertMessage.title}</AlertTitle>
-              <AlertDescription>{alertMessage.message}</AlertDescription>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setAlertMessage(null);
-                  setIsEditDrawerOpen(false);
-                  setSelectedListing(null);
-                }}
-                className="absolute right-3 top-3 text-current opacity-60 hover:opacity-100"
-                aria-label="Close alert and drawer"
-              >
-                ✕
-              </button>
-            </Alert>
-          )}
-          <div className="m-2 space-y-2">
-            <label className="text-sm font-medium">Listing title</label>
-            <input
-              type="text"
-              value={editForm.title}
-              onChange={(e) =>
-                setEditForm({ ...editForm, title: e.target.value })
-              }
-              className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
-            />
-          </div>
-
-          <div className="m-2 space-y-2">
-            <label className="text-sm font-medium">Description</label>
-            <textarea
-              value={editForm.description}
-              onChange={(e) =>
-                setEditForm({ ...editForm, description: e.target.value })
-              }
-              placeholder="Describe your food listing"
-              rows={3}
-              className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
-            />
-          </div>
-          <div className="m-2 space-y-2">
-            <label className="text-sm font-medium">Selling price (R)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={editForm.price}
-              onChange={(e) =>
-                setEditForm({ ...editForm, price: e.target.value })
-              }
-              placeholder="0.00"
-              className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
-            />
-          </div>
-
-          <div className="m-2 space-y-2">
-            <label className="text-sm font-medium">Original price (R)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={editForm.originalPrice}
-              onChange={(e) =>
-                setEditForm({ ...editForm, originalPrice: e.target.value })
-              }
-              placeholder="0.00"
-              className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
-            />
-          </div>
-
-          <div className="m-2 space-y-2">
-            <label className="text-sm font-medium">Quantity available</label>
-            <input
-              type="number"
-              min="0"
-              value={editForm.quantityAvailable}
-              onChange={(e) =>
-                setEditForm({ ...editForm, quantityAvailable: e.target.value })
-              }
-              className="w-full rounded-lg border border-[#D8DED8] bg-white px-3 py-2 text-sm text-[#26332D] outline-none focus:border-[#173D32] focus:ring-2 focus:ring-[#173D32]/10"
-            />
-          </div>
-
-          <div className="m-2 flex gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditDrawerOpen(false);
-                setAlertMessage(null);
-                setSelectedListing(null);
-              }}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSaveEdit}
-              className="flex-1 rounded-lg bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#245344]"
-            >
-              Save Changes
-            </button>
-          </div>
-        </SheetContent>
-      </Sheet>
+        editForm={editForm}
+        setEditForm={setEditForm}
+        alertMessage={alertMessage}
+        setAlertMessage={setAlertMessage}
+        onSave={handleSaveEdit}
+        selectedListing={selectedListing}
+        existingPhotos={existingPhotos}
+        setExistingPhotos={setExistingPhotos}
+        newPhotos={newPhotos}
+        setNewPhotos={setNewPhotos}
+        newPhotoPreviews={newPhotoPreviews}
+        setNewPhotoPreviews={setNewPhotoPreviews}
+        photoError={photoError}
+        setPhotoError={setPhotoError}
+        photoOrder={photoOrder}
+        setPhotoOrder={setPhotoOrder}
+      />
 
       <AlertDialog
         open={cancelListingId !== null}
