@@ -42,3 +42,21 @@ export interface FoodListing {
 }[];
 }
 
+export interface CustomerListing extends FoodListing {
+  branch: {
+    id: ID;
+    name: string;
+    address: string;
+    suburb: string | null;
+    city: string;
+    country: string;
+    latitude: number | null;
+    longitude: number | null;
+    phone: string;
+    business: {
+      name: string;
+      type: string;
+    };
+  };
+}
+

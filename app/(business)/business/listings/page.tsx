@@ -45,7 +45,6 @@ export default function ManageListingsPage() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoOrder, setPhotoOrder] = useState<string[]>([]);
 
-  
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
@@ -158,6 +157,36 @@ export default function ManageListingsPage() {
 
         uploadedPhotos = uploadData.photos;
       }
+
+      const photosByKey = new Map<
+        string,
+        { fileId: string; url: string; name: string }
+      >();
+
+      existingPhotos.forEach((photo) => {
+        photosByKey.set(`existing-${photo.id}`, {
+          fileId: photo.fileId,
+          url: photo.url,
+          name: photo.name,
+        });
+      });
+
+      uploadedPhotos.forEach((photo, index) => {
+        photosByKey.set(`new-${index}`, photo);
+      });
+
+      const orderedPhotoKeys = [
+        ...photoOrder.filter((key) => photosByKey.has(key)),
+        ...Array.from(photosByKey.keys()).filter(
+          (key) => !photoOrder.includes(key),
+        ),
+      ];
+
+      const orderedPhotos = orderedPhotoKeys.map((key, index) => ({
+        ...photosByKey.get(key)!,
+        sortOrder: index,
+      }));
+
       const response = await fetch("/api/business/listings", {
         method: "PUT",
         headers: {
@@ -166,14 +195,7 @@ export default function ManageListingsPage() {
         body: JSON.stringify({
           id: selectedListing.id,
           ...editForm,
-          photos: [...existingPhotos, ...uploadedPhotos].map(
-            (photo, index) => ({
-              fileId: photo.fileId,
-              url: photo.url,
-              name: photo.name,
-              sortOrder: index,
-            }),
-          ),
+          photos: orderedPhotos,
         }),
       });
 

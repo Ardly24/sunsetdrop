@@ -238,7 +238,7 @@ export default function EditListing({
         <div className="m-2 space-y-3">
           <label className="text-sm font-medium">Listing photos</label>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {orderedExistingPhotos.map((photo) => (
               <div
                 key={photo.id}
@@ -309,7 +309,7 @@ export default function EditListing({
           </div>
           {photoError && <p className="text-xs text-red-600">{photoError}</p>}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {orderedNewPhotoPreviews.map(({ preview, index }) => (
               <div
                 key={preview}
