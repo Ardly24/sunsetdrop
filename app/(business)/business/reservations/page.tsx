@@ -16,6 +16,7 @@ const initialReservations: Reservation[] = [
     createdAt: "2024-05-30T08:00:00Z",
     updatedAt: "2024-05-30T08:00:00Z",
   },
+  
   {
     id: "RES-002",
     customerId: "CUS-002",

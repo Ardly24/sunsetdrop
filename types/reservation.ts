@@ -1,15 +1,5 @@
 import { ID } from "./common";
 
-// export interface Reservation {
-//   id: ID;
-//   customerName: string;
-//   customerEmail: string;
-//   listingTitle: string;
-//   quantity: number;
-//   collectionTime: string;
-//   status: ReservationStatus;
-// }
-
 export type ReservationStatus =
   | "PENDING"
   | "CONFIRMED"
@@ -25,4 +15,28 @@ export interface Reservation {
   status: ReservationStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CustomerReservation extends Reservation {
+  listing: {
+    id: ID;
+    title: string;
+    category: string;
+    price: number;
+    originalPrice: number;
+    images: {
+      id: ID;
+      url: string;
+    }[];
+    branch: {
+      name: string;
+      city: string;
+      suburb: string;
+      country: string;
+      address: string;
+      business: {
+        name: string;
+      };
+    };
+  };
 }
