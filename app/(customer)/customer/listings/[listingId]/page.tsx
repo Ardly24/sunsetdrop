@@ -295,20 +295,39 @@ export default function ListingDetailsPage({
       <Sheet open={isReserveDrawerOpen} onOpenChange={setIsReserveDrawerOpen}>
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto sm:max-w-md p-6"
+          className="w-full overflow-y-auto p-6"
         >
           <SheetHeader>
-            <SheetTitle className="text-xl font-bold text-[#173D32]">Reserve Item</SheetTitle>
+            <SheetTitle className="text-xl font-bold text-[#173D32]">
+              Reserve Item
+            </SheetTitle>
             <SheetDescription className="text-sm text-[#718078]">
               Reserve {listing.title} for collection at your preferred time.
             </SheetDescription>
           </SheetHeader>
 
           {reservationMessage && (
-            <p className="mt-4 rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-              {reservationMessage}
-            </p>
-          )}
+  <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-5">
+    <div className="flex items-center gap-2">
+      <span className="text-xl">✓</span>
+      <h3 className="font-semibold text-green-800">
+        Reservation successful!
+      </h3>
+    </div>
+
+    <p className="mt-2 text-sm text-green-700">
+      Your items have been reserved successfully. You can view your
+      reservation details and collection information below.
+    </p>
+
+    <a
+      href="/customer/reservations"
+      className="mt-4 inline-flex rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#245344]"
+    >
+      View My Reservations
+    </a>
+  </div>
+)}
 
           {reservationError && (
             <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700">
@@ -377,15 +396,44 @@ export default function ListingDetailsPage({
             <p className="mt-1 text-xs text-brand-muted">
               Choose a time within the collection window.
             </p>
+
+            <p className="mt-2 text-sm text-brand-muted">
+              Collection window:{" "}
+              {new Date(
+                Math.max(
+                  new Date(listing.collectionStartsAt).getTime(),
+                  currentTime ?? new Date(listing.collectionStartsAt).getTime(),
+                ),
+              ).toLocaleString("en-ZA", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+              {" - "}
+              {new Date(listing.collectionEndsAt).toLocaleString("en-ZA", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </p>
           </div>
 
           <div className="border-t border-gray-100 pt-5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted">Total</span>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm text-muted">
+                <span>Price per item</span>
+                <span>R{Number(listing.price).toFixed(2)}</span>
+              </div>
 
-              <span className="text-xl font-bold text-forest">
-                R{(Number(listing.price) * Number(quantity)).toFixed(2)}
-              </span>
+              <div className="flex justify-between text-sm text-muted">
+                <span>Quantity</span>
+                <span>{Number(quantity)}</span>
+              </div>
+
+              <div className="flex justify-between border-t border-gray-200 pt-3">
+                <span className="font-semibold text-charcoal">Total</span>
+                <span className="text-xl font-bold text-forest">
+                  R{(Number(listing.price) * Number(quantity)).toFixed(2)}
+                </span>
+              </div>
             </div>
 
             <button
