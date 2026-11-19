@@ -31,12 +31,13 @@ export default function ListingDetailsPage({
   const [listing, setListing] = useState<CustomerListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState("1");
   const [collectionTime, setCollectionTime] = useState("");
   const [reserving, setReserving] = useState(false);
   const [reservationMessage, setReservationMessage] = useState("");
   const [reservationError, setReservationError] = useState("");
   const [isReserveDrawerOpen, setIsReserveDrawerOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
 
   useEffect(() => {
     params.then(({ listingId }) => {
@@ -85,7 +86,7 @@ export default function ListingDetailsPage({
         },
         body: JSON.stringify({
           listingId: listing.id,
-          quantity,
+          quantity: Number(quantity),
           collectionTime: new Date(collectionTime).toISOString(),
         }),
       });
@@ -102,12 +103,13 @@ export default function ListingDetailsPage({
         prevListing
           ? {
               ...prevListing,
-              quantityAvailable: prevListing.quantityAvailable - quantity,
+              quantityAvailable:
+                prevListing.quantityAvailable - Number(quantity),
             }
           : null,
       );
 
-      setQuantity(1);
+      setQuantity("1");
       setCollectionTime("");
     } catch (error) {
       setReservationError(
@@ -171,7 +173,10 @@ export default function ListingDetailsPage({
             </h1>
 
             <button
-              onClick={() => setIsReserveDrawerOpen(true)}
+              onClick={() => {
+                setCurrentTime(Date.now());
+                setIsReserveDrawerOpen(true);
+              }}
               disabled={listing.quantityAvailable < 1}
               className="rounded-xl bg-forest px-6 py-3 font-semibold text-white transition hover:bg-[#245344] disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -287,94 +292,117 @@ export default function ListingDetailsPage({
         </div>
       </div>
 
-<Sheet
-  open={isReserveDrawerOpen}
-  onOpenChange={setIsReserveDrawerOpen}
->
-  <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
-    <SheetHeader>
-      <SheetTitle>Reserve Item</SheetTitle>
-      <SheetDescription>
-        Reserve {listing.title} for collection at your preferred time.
-      </SheetDescription>
-    </SheetHeader>
+      <Sheet open={isReserveDrawerOpen} onOpenChange={setIsReserveDrawerOpen}>
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto sm:max-w-md p-6"
+        >
+          <SheetHeader>
+            <SheetTitle className="text-xl font-bold text-[#173D32]">Reserve Item</SheetTitle>
+            <SheetDescription className="text-sm text-[#718078]">
+              Reserve {listing.title} for collection at your preferred time.
+            </SheetDescription>
+          </SheetHeader>
 
-    {reservationMessage && (
-  <p className="mt-4 rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-    {reservationMessage}
-  </p>
-)}
+          {reservationMessage && (
+            <p className="mt-4 rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
+              {reservationMessage}
+            </p>
+          )}
 
-{reservationError && (
-  <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700">
-    {reservationError}
-  </p>
-)}
+          {reservationError && (
+            <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700">
+              {reservationError}
+            </p>
+          )}
 
-    <div className="mt-6 space-y-5">
-  <div>
-    <label className="block text-sm font-medium text-charcoal">
-      Quantity
-    </label>
+          <div className="mt-6 space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-charcoal">
+                Quantity
+              </label>
 
-    <input
-      type="number"
-      min={1}
-      max={listing.quantityAvailable}
-      value={quantity}
-      onChange={(e) => setQuantity(Number(e.target.value))}
-      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3"
-    />
+              <input
+                type="number"
+                value={quantity}
+                onChange={(e) => {
+                  const value = e.target.value;
 
-    <p className="mt-1 text-xs text-muted">
-      {listing.quantityAvailable} items available
-    </p>
-  </div>
-</div>
+                  if (value === "") {
+                    setQuantity("");
+                    return;
+                  }
 
-<div>
-  <label className="block text-sm font-medium text-charcoal">
-    Collection time
-  </label>
+                  const number = Number(value);
 
-  <input
-    type="datetime-local"
-    min={formatDateTimeLocal(listing.collectionStartsAt)}
-    max={formatDateTimeLocal(listing.collectionEndsAt)}
-    value={collectionTime}
-    onChange={(e) => setCollectionTime(e.target.value)}
-    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3"
-  />
+                  if (
+                    Number.isInteger(number) &&
+                    number >= 1 &&
+                    number <= listing.quantityAvailable
+                  ) {
+                    setQuantity(value);
+                  }
+                }}
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3"
+              />
 
-  <p className="mt-1 text-xs text-muted">
-    Choose a time within the collection window.
-  </p>
-</div>
+              <p className="mt-1 text-xs text-brand-muted">
+                {listing.quantityAvailable} items available
+              </p>
+            </div>
+          </div>
 
-<div className="border-t border-gray-100 pt-5">
-  <div className="flex items-center justify-between">
-    <span className="text-sm text-muted">Total</span>
+          <div>
+            <label className="block text-sm font-medium text-charcoal">
+              Collection time
+            </label>
 
-    <span className="text-xl font-bold text-forest">
-      R{(Number(listing.price) * quantity).toFixed(2)}
-    </span>
-  </div>
+            <input
+              type="datetime-local"
+              min={formatDateTimeLocal(
+                new Date(
+                  Math.max(
+                    new Date(listing.collectionStartsAt).getTime(),
+                    currentTime ??
+                      new Date(listing.collectionStartsAt).getTime(),
+                  ),
+                ).toISOString(),
+              )}
+              max={formatDateTimeLocal(listing.collectionEndsAt)}
+              value={collectionTime}
+              onChange={(e) => setCollectionTime(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3"
+            />
 
-  <button
-    onClick={handleReservation}
-    disabled={
-      reserving ||
-      quantity < 1 ||
-      quantity > listing.quantityAvailable ||
-      !collectionTime
-    }
-    className="mt-5 w-full rounded-xl bg-forest px-6 py-3 font-semibold text-white transition hover:bg-[#245344] disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    {reserving ? "Reserving..." : "Confirm Reservation"}
-  </button>
-</div>
-  </SheetContent>
-</Sheet>
+            <p className="mt-1 text-xs text-brand-muted">
+              Choose a time within the collection window.
+            </p>
+          </div>
+
+          <div className="border-t border-gray-100 pt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted">Total</span>
+
+              <span className="text-xl font-bold text-forest">
+                R{(Number(listing.price) * Number(quantity)).toFixed(2)}
+              </span>
+            </div>
+
+            <button
+              onClick={handleReservation}
+              disabled={
+                reserving ||
+                Number(quantity) < 1 ||
+                Number(quantity) > listing.quantityAvailable ||
+                !collectionTime
+              }
+              className="mt-5 w-full rounded-xl bg-forest px-6 py-3 font-semibold text-white transition hover:bg-[#245344] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {reserving ? "Reserving..." : "Confirm Reservation"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

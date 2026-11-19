@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/api-auth";
+import { unstable_rethrow } from "next/navigation";
 
 export async function GET() {
   try {
@@ -62,6 +63,7 @@ export async function GET() {
 
     return NextResponse.json({ listings });
   } catch (error) {
+    unstable_rethrow(error);
     console.error("Customer listings error:", error);
 
     return NextResponse.json(
