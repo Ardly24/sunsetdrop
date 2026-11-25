@@ -213,6 +213,10 @@ model Reservation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  collectionTokenHash       String?   @unique
+  collectionTokenExpiresAt DateTime?
+  collectedAt               DateTime?
+
   customer User    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 

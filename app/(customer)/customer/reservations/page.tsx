@@ -3,12 +3,17 @@
 import { useState, useEffect } from "react";
 import type { CustomerReservation } from "@/types";
 import Image from "next/image";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<CustomerReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const [qrTokens, setQrTokens] = useState<Record<string, string>>({});
+  const [generatingQRId, setGeneratingQRId] = useState<string | null>(null);
+  const [qrErrors, setQrErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchReservations = async () => {
@@ -71,8 +76,46 @@ export default function ReservationsPage() {
     }
   };
 
+  const handleGenerateQR = async (reservationId: string) => {
+    setGeneratingQRId(reservationId);
+
+    setQrErrors((prev) => ({
+      ...prev,
+      [reservationId]: "",
+    }));
+
+    try {
+      const response = await fetch("/api/customer/reservations/qr", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reservationId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate QR code.");
+      }
+
+      setQrTokens((prev) => ({
+        ...prev,
+        [reservationId]: data.token,
+      }));
+    } catch (error) {
+      setQrErrors((prev) => ({
+        ...prev,
+        [reservationId]:
+          error instanceof Error ? error.message : "Something went wrong.",
+      }));
+    } finally {
+      setGeneratingQRId(null);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-[#FFF9F0] px-6 py-10">
+    <main className="min-h-screen bg-[#FFF9F0] px-6 py-4">
       <div className="mx-auto max-w-7xl">
         {loading && (
           <p className="mt-8 text-[#718078]">Loading your reservations...</p>
@@ -182,11 +225,51 @@ export default function ReservationsPage() {
                     </p>
                   </div>
 
+                  {reservation.status === "CONFIRMED" && (
+                    <div className="mt-3">
+                      {!qrTokens[reservation.id] ? (
+                        <button
+                          onClick={() => handleGenerateQR(reservation.id)}
+                          disabled={generatingQRId === reservation.id}
+                          className="w-full rounded-xl bg-[#173D32] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#245343] disabled:opacity-50"
+                        >
+                          {generatingQRId === reservation.id
+                            ? "Generating QR Code..."
+                            : "Show Collection QR"}
+                        </button>
+                      ) : (
+                        <div className="rounded-xl border border-gray-200 bg-[#FFF9F0] p-2 text-center">
+                          <p className="mb-2 text-sm font-semibold text-[#173D32]">
+                            Your Collection QR Code
+                          </p>
+
+                          <div className="flex justify-center">
+                            <QRCodeSVG
+                              value={qrTokens[reservation.id]}
+                              size={180}
+                              level="H"
+                            />
+                          </div>
+
+                          <p className="mt-2 text-xs text-[#718078]">
+                            Present this QR code when collecting your order.
+                          </p>
+                        </div>
+                      )}
+
+                      {qrErrors[reservation.id] && (
+                        <p className="mt-2 text-sm text-red-600">
+                          {qrErrors[reservation.id]}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {["PENDING", "CONFIRMED"].includes(reservation.status) && (
                     <button
                       onClick={() => handleCancelReservation(reservation.id)}
                       disabled={cancellingId === reservation.id}
-                      className="mt-4 w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                      className="mt-2 w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                     >
                       Cancel Reservation
                     </button>

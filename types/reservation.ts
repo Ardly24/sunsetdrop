@@ -40,3 +40,24 @@ export interface CustomerReservation extends Reservation {
     };
   };
 }
+
+
+export interface BusinessReservation extends Reservation {
+  customer: {
+    id: ID;
+    fullName: string;
+    phone: string;
+    email: string;
+  };
+  listing: {
+    id: ID;
+    title: string;
+    price: number;
+    type: "DISCOUNTED" | "DONATION";
+    images: {
+      id: ID;
+      url: string;
+    }[];
+  };
+}
+
