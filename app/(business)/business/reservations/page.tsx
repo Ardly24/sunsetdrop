@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BusinessReservation, ReservationStatus } from "@/types";
-import { Html5Qrcode } from "html5-qrcode";
+import ReservationQRScanner from '../components/ReservationQRScanner'
 
 const statusStyles: Record<ReservationStatus, string> = {
   PENDING: "bg-amber-100 text-amber-800",
@@ -20,7 +20,6 @@ export default function ReservationsPage() {
   const [scanResult, setScanResult] = useState("");
   const [verifyingQR, setVerifyingQR] = useState(false);
 
-  const scannerRef = useRef<Html5Qrcode | null>(null);
   const verificationInProgressRef = useRef(false);
 
   useEffect(() => {
@@ -92,91 +91,6 @@ export default function ReservationsPage() {
     }
   }
 
-  useEffect(() => {
-    if (!scannerOpen) return;
-
-    let cancelled = false;
-    let startPromise: Promise<null> | null = null;
-
-    const scanner = new Html5Qrcode("qr-reader");
-    scannerRef.current = scanner;
-    async function initialiseScanner() {
-      // const scanner = new Html5Qrcode("qr-reader");
-      // scannerRef.current = scanner;
-
-      try {
-        const cameras = await Html5Qrcode.getCameras();
-        if (cancelled) return;
-
-        if (cameras.length === 0) {
-          throw new Error("No camera detected.");
-        }
-
-        const camera =
-          cameras.find((camera) =>
-            /back|rear|environment/i.test(camera.label),
-          ) || cameras[0];
-
-        startPromise = scanner.start(
-          camera.id,
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            if (cancelled || verificationInProgressRef.current) return;
-
-            if (!/^[a-f0-9]{64}$/i.test(decodedText)) {
-              setScanResult(
-                "Invalid QR code. Please scan a SunsetDrop collection QR.",
-              );
-              return;
-            }
-
-            void handleVerifyQR(decodedText);
-          },
-          () => {},
-        );
-        await startPromise;
-      } catch (error) {
-        console.error("Camera initialization error:", error);
-
-        if (!cancelled) {
-          setScanResult(
-            "Unable to access the camera. Please check your camera permissions.",
-          );
-          setScannerOpen(false);
-        }
-      }
-    }
-
-    initialiseScanner();
-
-    return () => {
-      cancelled = true;
-
-      async function stopScanner() {
-        try {
-          if (startPromise) {
-            await startPromise.catch(() => null);
-          }
-
-          if (scanner.isScanning) {
-            await scanner.stop();
-          }
-        } catch (error) {
-          console.error("Camera cleanup error:", error);
-        } finally {
-          if (scannerRef.current === scanner) {
-            scannerRef.current = null;
-          }
-        }
-      }
-
-      void stopScanner();
-    };
-  }, [scannerOpen]);
-
   async function updateStatus(id: string, status: ReservationStatus) {
     try {
       const response = await fetch("/api/business/reservations", {
@@ -243,7 +157,7 @@ export default function ReservationsPage() {
         </div>
       </div>
 
-      {scannerOpen && (
+      {/* {scannerOpen && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold text-forest">Scan Customer QR Code</h2>
@@ -270,7 +184,16 @@ export default function ReservationsPage() {
             </p>
           )}
         </div>
-      )}
+      )} */}
+
+      <ReservationQRScanner
+  scannerOpen={scannerOpen}
+  scanResult={scanResult}
+  onClose={() => setScannerOpen(false)}
+  onVerify={handleVerifyQR}
+  onScanResult={setScanResult}
+  verifyingQR={verifyingQR}
+/>
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
