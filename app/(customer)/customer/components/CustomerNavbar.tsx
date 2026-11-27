@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import NotificationBell from "@/app/components/notifications/notification-bell";
 
 interface User {
   id: string;
@@ -107,6 +108,7 @@ export default function CustomerNavbar() {
             <>
               {user ? (
                 <>
+                   <NotificationBell />
                   <span className="hidden text-sm font-medium text-[#26332D] lg:inline">
                     Hi, {user.fullName.split(" ")[0]}
                   </span>

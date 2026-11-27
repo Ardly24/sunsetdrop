@@ -32,3 +32,18 @@ export interface RegistrationForm {
   businessType?: BusinessType | '';
 }
 
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  link: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: AppNotification[];
+  unreadCount: number;
+}

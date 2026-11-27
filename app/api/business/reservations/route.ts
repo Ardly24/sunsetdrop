@@ -1,17 +1,14 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/api-auth";
+import { createNotification } from "@/lib/notifications";
 
 export async function GET() {
   try {
     const userId = await getSessionUserId();
 
     if (!userId) {
-      return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -28,10 +25,7 @@ export async function GET() {
     });
 
     if (!user || user.role !== "BUSINESS") {
-      return NextResponse.json(
-        { message: "Forbidden." },
-        { status: 403 },
-      );
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
     }
 
     if (!user.branch || !user.branch.isActive) {
@@ -86,16 +80,12 @@ export async function GET() {
   }
 }
 
-
 export async function PATCH(request: Request) {
   try {
     const userId = await getSessionUserId();
 
     if (!userId) {
-      return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -112,10 +102,7 @@ export async function PATCH(request: Request) {
     });
 
     if (!user || user.role !== "BUSINESS") {
-      return NextResponse.json(
-        { message: "Forbidden." },
-        { status: 403 },
-      );
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
     }
 
     if (!user.branch || !user.branch.isActive) {
@@ -171,8 +158,28 @@ export async function PATCH(request: Request) {
         id: true,
         status: true,
         updatedAt: true,
+        customerId: true,
+        listing: {
+          select: {
+            title: true,
+          },
+        },
       },
     });
+
+    if (reservation) {
+  try {
+    await createNotification({
+      userId: reservation.customerId,
+      type: "RESERVATION_CONFIRMED",
+      title: "Reservation confirmed!",
+      message: `Your reservation for ${reservation.listing.title} has been confirmed.`,
+      link: "/customer/reservations",
+    });
+  } catch (error) {
+    console.error("Create confirmation notification error:", error);
+  }
+}
 
     return NextResponse.json({
       message: "Reservation confirmed successfully.",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/api-auth";
+import { createNotification } from "@/lib/notifications";
 
 export async function GET() {
   try {
@@ -14,7 +15,7 @@ export async function GET() {
     }
 
     const userId = auth.userId;
-    
+
     const reservations = await prisma.reservation.findMany({
       where: {
         customerId: userId,
@@ -83,6 +84,21 @@ export async function PATCH(request: Request) {
         listingId: true,
         quantity: true,
         status: true,
+        listing: {
+          select: {
+            title: true,
+            branch: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+        customer: {
+          select: {
+            fullName: true,
+          },
+        },
       },
     });
 
@@ -144,6 +160,18 @@ export async function PATCH(request: Request) {
         { status: 409 },
       );
     }
+
+    try {
+  await createNotification({
+    userId: reservation.listing.branch.userId,
+    type: "RESERVATION_CANCELLED",
+    title: "Reservation cancelled",
+    message: `${reservation.customer.fullName} cancelled their reservation for ${reservation.listing.title}.`,
+    link: "/business/reservations",
+  });
+} catch (error) {
+  console.error("Create cancellation notification error:", error);
+}
 
     return NextResponse.json(
       {
@@ -209,9 +237,15 @@ export async function POST(request: Request) {
       },
       select: {
         id: true,
+        title: true,
         quantityAvailable: true,
         collectionStartsAt: true,
         collectionEndsAt: true,
+        branch: {
+          select: {
+            userId: true,
+          },
+        },
       },
     });
 
@@ -251,6 +285,7 @@ export async function POST(request: Request) {
       },
       select: {
         role: true,
+        fullName: true,
       },
     });
 
@@ -302,6 +337,18 @@ export async function POST(request: Request) {
         { error: "Sorry, this listing no longer has enough stock available." },
         { status: 409 },
       );
+    }
+
+    try {
+      await createNotification({
+        userId: listing.branch.userId,
+        type: "RESERVATION_CREATED",
+        title: "New reservation received",
+        message: `${customer.fullName} reserved ${quantity} item(s) of ${listing.title}.`,
+        link: "/business/reservations",
+      });
+    } catch (error) {
+      console.error("Create reservation notification error:", error);
     }
 
     return NextResponse.json(

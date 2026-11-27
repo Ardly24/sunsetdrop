@@ -1,18 +1,15 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/api-auth";
 import { hashReservationToken } from "@/lib/reservation-token";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(request: Request) {
   try {
     const userId = await getSessionUserId();
 
     if (!userId) {
-      return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -29,10 +26,7 @@ export async function POST(request: Request) {
     });
 
     if (!user || user.role !== "BUSINESS") {
-      return NextResponse.json(
-        { message: "Forbidden." },
-        { status: 403 },
-      );
+      return NextResponse.json({ message: "Forbidden." }, { status: 403 });
     }
 
     if (!user.branch || !user.branch.isActive) {
@@ -54,6 +48,27 @@ export async function POST(request: Request) {
 
     const tokenHash = hashReservationToken(token);
     const now = new Date();
+
+    const reservation = await prisma.reservation.findFirst({
+      where: {
+        collectionTokenHash: tokenHash,
+        collectionTokenExpiresAt: {
+          gt: now,
+        },
+        status: "CONFIRMED",
+        listing: {
+          branchId: user.branch.id,
+        },
+      },
+      select: {
+        customerId: true,
+        listing: {
+          select: {
+            title: true,
+          },
+        },
+      },
+    });
 
     const result = await prisma.reservation.updateMany({
       where: {
@@ -78,10 +93,24 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           message:
-             "This QR code is invalid, expired, or has already been used. Please ask the customer to generate a new one."
+            "This QR code is invalid, expired, or has already been used. Please ask the customer to generate a new one.",
         },
         { status: 400 },
       );
+    }
+
+    if (reservation) {
+      try {
+        await createNotification({
+          userId: reservation.customerId,
+          type: "RESERVATION_COLLECTED",
+          title: "Food collected successfully!",
+          message: `Your reservation for ${reservation.listing.title} has been collected. Enjoy!`,
+          link: "/customer/reservations",
+        });
+      } catch (error) {
+        console.error("Create collection notification error:", error);
+      }
     }
 
     return NextResponse.json({

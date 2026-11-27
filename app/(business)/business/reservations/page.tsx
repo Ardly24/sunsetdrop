@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BusinessReservation, ReservationStatus } from "@/types";
-import ReservationQRScanner from '../components/ReservationQRScanner'
+import ReservationQRScanner from "../components/ReservationQRScanner";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 
 const statusStyles: Record<ReservationStatus, string> = {
   PENDING: "bg-amber-100 text-amber-800",
@@ -157,43 +165,14 @@ export default function ReservationsPage() {
         </div>
       </div>
 
-      {/* {scannerOpen && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-forest">Scan Customer QR Code</h2>
-
-            <button
-              onClick={() => setScannerOpen(false)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              Close Scanner
-            </button>
-          </div>
-
-          <div id="qr-reader" className="mx-auto w-full max-w-lg" />
-
-          {scanResult && (
-            <p
-              className={`mt-4 text-center text-sm font-medium ${
-                scanResult === "Collection verified successfully!"
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
-            >
-              {scanResult}
-            </p>
-          )}
-        </div>
-      )} */}
-
       <ReservationQRScanner
-  scannerOpen={scannerOpen}
-  scanResult={scanResult}
-  onClose={() => setScannerOpen(false)}
-  onVerify={handleVerifyQR}
-  onScanResult={setScanResult}
-  verifyingQR={verifyingQR}
-/>
+        scannerOpen={scannerOpen}
+        scanResult={scanResult}
+        onClose={() => setScannerOpen(false)}
+        onVerify={handleVerifyQR}
+        onScanResult={setScanResult}
+        verifyingQR={verifyingQR}
+      />
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -305,10 +284,54 @@ export default function ReservationsPage() {
 }
 
 function SummaryCard({ title, value }: { title: string; value: number }) {
+  const styles = {
+    Pending: {
+      icon: "clock",
+      color: "text-amber-600",
+      background: "bg-amber-50",
+      description: "Awaiting confirmation",
+    },
+    Confirmed: {
+      icon: "check",
+      color: "text-emerald-700",
+      background: "bg-emerald-50",
+      description: "Ready for collection",
+    },
+    Collected: {
+      icon: "package",
+      color: "text-slate-600",
+      background: "bg-slate-100",
+      description: "Successfully collected",
+    },
+  }[title] ?? {
+    icon: "clock",
+    color: "text-forest",
+    background: "bg-gray-100",
+    description: "Reservation overview",
+  };
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
-      <p className="text-sm text-muted">{title}</p>
-      <p className="mt-2 text-3xl font-bold text-forest">{value}</p>
-    </div>
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-sm font-semibold text-muted">
+          {title}
+        </CardTitle>
+
+        <div className={`rounded-xl p-2 ${styles.background}`}>
+          <span className={`text-lg font-bold ${styles.color}`}>
+            {styles.icon === "clock"
+              ? "⌛"
+              : styles.icon === "check"
+                ? "✓"
+                : "📦"}
+          </span>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <p className="text-3xl font-bold tracking-tight text-forest">{value}</p>
+        <CardDescription className="mt-1">{styles.description}</CardDescription>
+      </CardContent>
+    </Card>
   );
 }
